@@ -77,9 +77,53 @@
       <div class="section-header">
         <h2 id="transactions-title">Transações</h2>
         @if (estado() === 'sucesso') {
-          <span class="count-badge">{{ quantidade() }}</span>
+          <span class="count-badge">{{ transacoesFiltradas().length }}</span>
         }
       </div>
+
+      @if (estado() === 'sucesso') {
+        <div class="filters" role="search" aria-label="Filtrar transações">
+          <label class="filter-field">
+            <span class="filter-label">Data</span>
+            <input
+              type="date"
+              class="filter-input"
+              [ngModel]="filtroData()"
+              (ngModelChange)="alterarData($event)"
+            />
+          </label>
+
+          <div class="filter-field">
+            <span class="filter-label">Tipo</span>
+            <div class="filter-toggle" role="group" aria-label="Filtrar por tipo">
+              <button
+                type="button"
+                class="filter-toggle__button"
+                [class.is-active]="filtroTipo() === 'todas'"
+                (click)="alterarTipo('todas')"
+              >
+                Todas
+              </button>
+              <button
+                type="button"
+                class="filter-toggle__button"
+                [class.is-active]="filtroTipo() === 'entrada'"
+                (click)="alterarTipo('entrada')"
+              >
+                Entradas
+              </button>
+              <button
+                type="button"
+                class="filter-toggle__button"
+                [class.is-active]="filtroTipo() === 'saida'"
+                (click)="alterarTipo('saida')"
+              >
+                Saídas
+              </button>
+            </div>
+          </div>
+        </div>
+      }
 
       @switch (estado()) {
         @case ('carregando') {
@@ -127,9 +171,28 @@
           </div>
         }
 
+        @case ('recarregando') {
+          <div class="reload-placeholder" aria-hidden="true"></div>
+        }
+
         @default {
+          @if (transacoesFiltradas().length === 0) {
+            <div class="state-box state-box--empty">
+              <span class="state-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9Z" />
+                  <path d="M3 9h18" />
+                </svg>
+              </span>
+              <h3>Nenhuma transação encontrada</h3>
+              <p>Nenhuma movimentação corresponde aos filtros selecionados.</p>
+              <button type="button" class="secondary-button" (click)="limparFiltros()">
+                Limpar filtros
+              </button>
+            </div>
+          } @else {
           <ul class="transaction-list">
-            @for (transacao of transacoes(); track transacao.id) {
+            @for (transacao of transacoesPagina(); track transacao.id) {
               <li class="transaction-item" [class.transaction-item--out]="!ehEntrada(transacao.valor)">
                 <span class="transaction-icon" aria-hidden="true">
                   @if (ehEntrada(transacao.valor)) {
@@ -158,10 +221,57 @@
               </li>
             }
           </ul>
+
+          @if (temPaginacao()) {
+            <nav class="pagination" aria-label="Paginação do extrato">
+              <button
+                type="button"
+                class="pagination__button"
+                (click)="paginaAnterior()"
+                [disabled]="paginaAtualSegura() === 1"
+              >
+                Anterior
+              </button>
+
+              <div class="pagination__pages">
+                @for (pagina of paginas(); track pagina) {
+                  <button
+                    type="button"
+                    class="pagination__page"
+                    [class.is-active]="pagina === paginaAtualSegura()"
+                    [attr.aria-current]="pagina === paginaAtualSegura() ? 'page' : null"
+                    (click)="irParaPagina(pagina)"
+                  >
+                    {{ pagina }}
+                  </button>
+                }
+              </div>
+
+              <button
+                type="button"
+                class="pagination__button"
+                (click)="proximaPagina()"
+                [disabled]="paginaAtualSegura() === totalPaginas()"
+              >
+                Próxima
+              </button>
+            </nav>
+          }
+          }
         }
       }
     </section>
   </main>
+
+  @if (estado() === 'recarregando') {
+    <div class="reload-overlay" role="status" aria-live="polite">
+      <div class="reload-overlay__card">
+        <span class="reload-spinner" aria-hidden="true"></span>
+        <strong>Carregando movimentações...</strong>
+        <p>Estamos atualizando seu extrato.</p>
+      </div>
+    </div>
+  }
 
   <footer class="app-footer">
     <img
@@ -171,6 +281,6 @@
       width="123"
       height="23"
     />
-    <p>Saldo calculado com base nas transações exibidas.</p>
+    <p>Saldo calculado com base nas transações carregadas.</p>
   </footer>
 </div>
