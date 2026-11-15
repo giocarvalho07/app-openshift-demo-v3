@@ -1,0 +1,176 @@
+<div class="app-shell">
+  <header class="app-bar">
+    <div class="app-bar__brand">
+      <img
+        class="brand-logo"
+        src="assets/brand/bradesco-logo-white.svg"
+        alt="Bradesco"
+        width="123"
+        height="23"
+      />
+      <span class="brand-divider" aria-hidden="true"></span>
+      <span class="brand-name">Extrato Digital</span>
+    </div>
+
+    <button
+      type="button"
+      class="refresh-button"
+      (click)="carregar()"
+      [disabled]="carregando()"
+      aria-label="Atualizar extrato"
+    >
+      <svg
+        class="refresh-icon"
+        [class.refresh-icon--spinning]="carregando()"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M20 11a8 8 0 0 0-14.6-4.6L3 9" />
+        <path d="M3 4v5h5" />
+        <path d="M4 13a8 8 0 0 0 14.6 4.6L21 15" />
+        <path d="M21 20v-5h-5" />
+      </svg>
+      <span>Atualizar</span>
+    </button>
+  </header>
+
+  <main class="page">
+    <div class="page-heading">
+      <p class="eyebrow">Conta corrente</p>
+      <h1>Meu Extrato</h1>
+      <p class="subtitle">Acompanhe suas movimentações mais recentes.</p>
+    </div>
+
+    <section class="balance-card" [attr.aria-busy]="carregando()" aria-live="polite">
+      <div class="balance-card__glow" aria-hidden="true"></div>
+      <div class="balance-card__content">
+        <span class="balance-label">Saldo atual</span>
+
+        @if (carregando()) {
+          <span class="skeleton skeleton--balance" aria-hidden="true"></span>
+          <span class="balance-meta">Carregando movimentações...</span>
+        } @else {
+          <strong class="balance-value" [class.balance-value--negative]="saldo() < 0">
+            {{ formatarMoeda(saldo()) }}
+          </strong>
+          <span class="balance-meta">
+            {{ quantidade() }} {{ quantidade() === 1 ? 'transação' : 'transações' }}
+          </span>
+        }
+      </div>
+
+      <span class="balance-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9Z" />
+          <path d="M3 9h18" />
+          <path d="M16 13.5h2" />
+        </svg>
+      </span>
+    </section>
+
+    <section class="transactions" aria-labelledby="transactions-title">
+      <div class="section-header">
+        <h2 id="transactions-title">Transações</h2>
+        @if (estado() === 'sucesso') {
+          <span class="count-badge">{{ quantidade() }}</span>
+        }
+      </div>
+
+      @switch (estado()) {
+        @case ('carregando') {
+          <div class="skeleton-list" role="status" aria-label="Carregando extrato">
+            @for (item of [1, 2, 3]; track item) {
+              <div class="skeleton-item" aria-hidden="true">
+                <span class="skeleton skeleton--icon"></span>
+                <span class="skeleton-item__text">
+                  <span class="skeleton skeleton--line"></span>
+                  <span class="skeleton skeleton--line skeleton--line-short"></span>
+                </span>
+                <span class="skeleton skeleton--value"></span>
+              </div>
+            }
+          </div>
+        }
+
+        @case ('erro') {
+          <div class="state-box state-box--error" role="alert">
+            <span class="state-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 9v4" />
+                <path d="M12 16h.01" />
+                <path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" />
+              </svg>
+            </span>
+            <h3>Não foi possível carregar seu extrato</h3>
+            <p>{{ erro() }}</p>
+            <button type="button" class="secondary-button" (click)="carregar()">
+              Tentar novamente
+            </button>
+          </div>
+        }
+
+        @case ('vazio') {
+          <div class="state-box state-box--empty">
+            <span class="state-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9Z" />
+                <path d="M3 9h18" />
+              </svg>
+            </span>
+            <h3>Nenhuma transação encontrada</h3>
+            <p>Quando houver movimentações na sua conta, elas aparecerão aqui.</p>
+          </div>
+        }
+
+        @default {
+          <ul class="transaction-list">
+            @for (transacao of transacoes(); track transacao.id) {
+              <li class="transaction-item" [class.transaction-item--out]="!ehEntrada(transacao.valor)">
+                <span class="transaction-icon" aria-hidden="true">
+                  @if (ehEntrada(transacao.valor)) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M7 7h10v10" />
+                      <path d="M7 17 17 7" />
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M17 17H7V7" />
+                      <path d="m17 7-10 10" />
+                    </svg>
+                  }
+                </span>
+
+                <div class="transaction-info">
+                  <span class="transaction-description">{{ transacao.descricao }}</span>
+                  <time class="transaction-date" [attr.datetime]="transacao.data">
+                    {{ formatarData(transacao.data) }}
+                  </time>
+                </div>
+
+                <span class="transaction-value" [class.transaction-value--out]="!ehEntrada(transacao.valor)">
+                  {{ formatarValor(transacao.valor) }}
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      }
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <img
+      class="footer-logo"
+      src="assets/brand/bradesco-logo.svg"
+      alt="Bradesco"
+      width="123"
+      height="23"
+    />
+    <p>Saldo calculado com base nas transações exibidas.</p>
+  </footer>
+</div>
